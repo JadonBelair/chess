@@ -2,6 +2,7 @@ use piece::{Piece, PieceType, Team};
 use std::fmt::Debug;
 mod piece;
 
+#[derive(PartialEq)]
 struct Pos {
     pub x: usize,
     pub y: usize,
@@ -21,12 +22,16 @@ impl Debug for Pos {
 
 fn main() {
     let mut board = build_board();
-    board[3][3] = Some(Piece::new(PieceType::Rook, Team::Black));
-    board[3][1] = Some(Piece::new(PieceType::Rook, Team::Black));
+    board[3][3] = Some(Piece::new(PieceType::Rook, Team::White));
+    // board[4][4] = Some(Piece::new(PieceType::Rook, Team::Black));
+
+    let moves = get_piece_moves(&board, Pos::new(3, 3));
 
     for row in (0..8).rev() {
         for col in 0..8 {
-            if let Some(p) = board[row][col] {
+            if moves.contains(&Pos::new(col, row)) {
+                print!("XX ");
+            } else if let Some(p) = board[row][col] {
                 print!("{} ", p);
             } else {
                 print!("-- ");
@@ -34,8 +39,6 @@ fn main() {
         }
         println!();
     }
-
-    println!("{:?}", get_piece_moves(&board, 3, 3));
 }
 
 fn build_board() -> [[Option<Piece>; 8]; 8] {
@@ -63,8 +66,11 @@ fn build_board() -> [[Option<Piece>; 8]; 8] {
     return board;
 }
 
-fn get_piece_moves(board: &[[Option<Piece>; 8]; 8], col: usize, row: usize) -> Vec<Pos> {
+fn get_piece_moves(board: &[[Option<Piece>; 8]; 8], current: Pos) -> Vec<Pos> {
     let mut possible_spaces = Vec::new();
+
+    let col = current.x;
+    let row = current.y;
 
     if let Some(piece) = board[row][col] {
         match piece.piece {
@@ -115,50 +121,87 @@ fn get_piece_moves(board: &[[Option<Piece>; 8]; 8], col: usize, row: usize) -> V
                 };
             },
             PieceType::Rook => {
+                // checks how far up the piece can move
                 for i in (col+1)..8 {
-                    if let Some(other) = board[row][i] {
-                        if other.team != piece.team {
-                            possible_spaces.push(Pos::new(i, row));
-                        }
+                    if can_piece_enter(board, &piece, Pos::new(i, row)) {
+                        possible_spaces.push(Pos::new(i, row));
+                        if board[row][i].is_some() { break; }
+                    } else {
                         break;
                     }
-                    possible_spaces.push(Pos::new(i, row));
                 }
 
+                // checks how far down the piece can move
                 for i in (0..col).rev() {
-                    if let Some(other) = board[row][i] {
-                        if other.team != piece.team {
-                            possible_spaces.push(Pos::new(i, row));
-                        }
+                    if can_piece_enter(board, &piece, Pos::new(i, row)) {
+                        possible_spaces.push(Pos::new(i, row));
+                        if board[row][i].is_some() { break; }
+                    } else {
                         break;
                     }
-                    possible_spaces.push(Pos::new(i, row));
                 }
 
+                // checks how far to the right the piece can move
                 for i in (row+1)..8 {
-                    if let Some(other) = board[i][col] {
-                        if other.team != piece.team {
-                            possible_spaces.push(Pos::new(col, i));
-                        }
+                    if can_piece_enter(board, &piece, Pos::new(col, i)) {
+                        possible_spaces.push(Pos::new(col, i));
+                        if board[i][col].is_some() { break; }
+                    } else {
                         break;
                     }
-                    possible_spaces.push(Pos::new(col, i));
                 }
                 
-
+                // checks how far to the left the piece can move
                 for i in (0..row).rev() {
-                    if let Some(other) = board[i][col] {
-                        if other.team != piece.team {
-                            possible_spaces.push(Pos::new(col, i));
-                        }
+                    if can_piece_enter(board, &piece, Pos::new(col, i)) {
+                        possible_spaces.push(Pos::new(col, i));
+                        if board[i][col].is_some() { break; }
+                    } else {
                         break;
                     }
-                    possible_spaces.push(Pos::new(col, i));
+                }
+            },
+            PieceType::Knight => {
+                if col > 0 && row < 6 && can_piece_enter(board, &piece, Pos::new(col-1, row+2)) {
+                    possible_spaces.push(Pos::new(col-1, row+2));
+                }
+                if col < 7 && row < 6 && can_piece_enter(board, &piece, Pos::new(col+1, row+2)) {
+                    possible_spaces.push(Pos::new(col+1, row+2));
+                }
+                if col > 1 && row < 7 && can_piece_enter(board, &piece, Pos::new(col-2, row+1)) {
+                    possible_spaces.push(Pos::new(col-2, row+1));
+                }
+                if col < 6 && row < 7 && can_piece_enter(board, &piece, Pos::new(col+2, row+1)) {
+                    possible_spaces.push(Pos::new(col+2, row+1));
+                }
+                if col > 1 && row > 0 && can_piece_enter(board, &piece, Pos::new(col-2, row-1)) {
+                    possible_spaces.push(Pos::new(col-2, row-1));
+                }
+                if col < 6 && row > 0 && can_piece_enter(board, &piece, Pos::new(col+2, row-1)) {
+                    possible_spaces.push(Pos::new(col+2, row-1));
+                }
+                if col > 0 && row > 1 && can_piece_enter(board, &piece, Pos::new(col-1, row-2)) {
+                    possible_spaces.push(Pos::new(col-1, row-2));
+                }
+                if col < 7 && row > 1 && can_piece_enter(board, &piece, Pos::new(col+1, row-2)){
+                    possible_spaces.push(Pos::new(col+1, row-2));
                 }
             },
             _ => ()
-        };
+        }
     }
 
     return possible_spaces;
+}
+
+fn can_piece_enter(board: &[[Option<Piece>; 8]; 8], piece: &Piece, move_to: Pos) -> bool {
+    if let Some(other) = board[move_to.y][move_to.x] {
+        if other.team != piece.team {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return true;
+    }
 }
